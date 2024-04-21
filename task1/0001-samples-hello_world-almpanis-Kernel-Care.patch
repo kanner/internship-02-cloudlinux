@@ -1,0 +1,91 @@
+From aca6a0f5aa6bd068bc2e93003570b284da671f03 Mon Sep 17 00:00:00 2001
+From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+Date: Sun, 21 Apr 2024 20:13:13 +0200
+Subject: [PATCH] samples: hello_world: almpanis: Kernel Care
+
+My first ever kernel module that prints
+to the debug log level two simple
+statements when the module is loaded
+and unloaded.
+
+Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+---
+ MAINTAINERS                       |  1 +
+ samples/Kconfig                   | 10 ++++++++++
+ samples/hello_world/Makefile      |  3 +++
+ samples/hello_world/kernel-care.c | 22 ++++++++++++++++++++++
+ 4 files changed, 36 insertions(+)
+ create mode 100644 samples/hello_world/Makefile
+ create mode 100644 samples/hello_world/kernel-care.c
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 261023998c5b..860bb067cbd2 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -24598,4 +24598,5 @@ L:	linux-kernel@vger.kernel.org
+ S:	Buried alive in reporters
+ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+ F:	*
++F:	samples/hello-world/
+ F:	*/
+diff --git a/samples/Kconfig b/samples/Kconfig
+index b288d9991d27..b8ce44fb6638 100644
+--- a/samples/Kconfig
++++ b/samples/Kconfig
+@@ -10,6 +10,16 @@ config SAMPLE_AUXDISPLAY
+ 	bool "auxdisplay sample"
+ 	depends on CC_CAN_LINK
+ 
++config SAMPLE_KERNEL_CARE
++	bool "Build kernel care sample"
++	help
++	  Build a sample program to demonstrate the use
++	  of the kernel care feature. This program will
++	  print to kernel's debug level when it is loaded
++	  and unloaded.
++
++	  It represents my first kernel module.
++
+ config SAMPLE_TRACE_EVENTS
+ 	tristate "Build trace_events examples -- loadable modules only"
+ 	depends on EVENT_TRACING && m
+diff --git a/samples/hello_world/Makefile b/samples/hello_world/Makefile
+new file mode 100644
+index 000000000000..98e17523f6f9
+--- /dev/null
++++ b/samples/hello_world/Makefile
+@@ -0,0 +1,3 @@
++# SPDX-License-Identifier: GPL-2.0-only
++obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
++CFLAGS_kernel-care.o := -DDEBUG
+diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
+new file mode 100644
+index 000000000000..d1c4c66e2cc8
+--- /dev/null
++++ b/samples/hello_world/kernel-care.c
+@@ -0,0 +1,22 @@
++// SPDX-License-Identifier: GPL-2.0-only
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Vasileios Almpanis");
++MODULE_DESCRIPTION("A simple kernel module that prints a message");
++
++static int __init hello_init(void)
++{
++	pr_debug("Hello, KernelCare!\n");
++	return 0;
++}
++
++static void __exit hello_exit(void)
++{
++	pr_debug("Goodbye, KernelCare!\n");
++}
++
++module_init(hello_init);
++module_exit(hello_exit);
+-- 
+2.40.1
+

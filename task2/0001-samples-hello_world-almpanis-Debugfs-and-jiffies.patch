@@ -1,6 +1,6 @@
-From 615153ca8a76ca827826ffd94d5d00418247fb96 Mon Sep 17 00:00:00 2001
+From 4c0ac4ea451dd2bf28b0673d5cf00dc59db2a7f6 Mon Sep 17 00:00:00 2001
 From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
-Date: Wed, 24 Apr 2024 14:53:20 +0200
+Date: Wed, 24 Apr 2024 19:11:45 +0200
 Subject: [PATCH] samples: hello_world: almpanis: Debugfs and jiffies
 
 Second part of my task for Cloudlinux OS. I mount the
@@ -25,7 +25,7 @@ index 98e17523f6f9..d7bb4ca12001 100644
  obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
 -CFLAGS_kernel-care.o := -DDEBUG
 diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
-index d1c4c66e2cc8..1c62b3cc7143 100644
+index d1c4c66e2cc8..4f7f6e614889 100644
 --- a/samples/hello_world/kernel-care.c
 +++ b/samples/hello_world/kernel-care.c
 @@ -2,21 +2,79 @@
@@ -39,7 +39,7 @@ index d1c4c66e2cc8..1c62b3cc7143 100644
 -MODULE_LICENSE("GPL");
 -MODULE_AUTHOR("Vasileios Almpanis");
 -MODULE_DESCRIPTION("A simple kernel module that prints a message");
-+#define DIR_NAME "jiffies"
++#define DIR_NAME "kernelcare"
 +#define FILE_NAME "jiffies"
 +
 +static struct dentry *dir_entry;

@@ -41,3 +41,23 @@ mount -t debugfs none /sys/kernel/debug
 ~~~
 debugfs    /sys/kernel/debug      debugfs  defaults  0 0
 ~~~
+
+## Jiffies
+### Enter the directory where the module is and load the module
+~~~
+export "CONFIG_SAMPLE_KERNEL_CARE=m"
+make
+sudo insmod kernel-care.ko
+~~~
+
+### Read the jiffies file
+~~~
+sudo cat /sys/kernel/debug/kernelcare/jiffies
+~~~
+
+>output will look similar to: 4295623222
+
+### Unload the module
+~~~
+sudo rmmod kernel_care
+~~~

@@ -6,7 +6,7 @@
 #include <linux/jiffies.h>
 #include <linux/namei.h>
 
-#define DIR_NAME "jiffies"
+#define DIR_NAME "kernelcare"
 #define FILE_NAME "jiffies"
 
 static struct dentry *dir_entry;

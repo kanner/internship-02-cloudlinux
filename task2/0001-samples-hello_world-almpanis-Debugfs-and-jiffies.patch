@@ -1,0 +1,122 @@
+From 615153ca8a76ca827826ffd94d5d00418247fb96 Mon Sep 17 00:00:00 2001
+From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+Date: Wed, 24 Apr 2024 14:53:20 +0200
+Subject: [PATCH] samples: hello_world: almpanis: Debugfs and jiffies
+
+Second part of my task for Cloudlinux OS. I mount the
+debugfs and create a directory called jiffies with a file
+called jiffies that has only read permissions and on read
+returns the current value of the current jiffies timer
+that holds the number of ticks that have occurred since the
+system booted.
+
+Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+---
+ samples/hello_world/Makefile      |  1 -
+ samples/hello_world/kernel-care.c | 76 +++++++++++++++++++++++++++----
+ 2 files changed, 67 insertions(+), 10 deletions(-)
+
+diff --git a/samples/hello_world/Makefile b/samples/hello_world/Makefile
+index 98e17523f6f9..d7bb4ca12001 100644
+--- a/samples/hello_world/Makefile
++++ b/samples/hello_world/Makefile
+@@ -1,3 +1,2 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
+-CFLAGS_kernel-care.o := -DDEBUG
+diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
+index d1c4c66e2cc8..1c62b3cc7143 100644
+--- a/samples/hello_world/kernel-care.c
++++ b/samples/hello_world/kernel-care.c
+@@ -2,21 +2,79 @@
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
++#include <linux/debugfs.h>
++#include <linux/jiffies.h>
++#include <linux/namei.h>
+ 
+-MODULE_LICENSE("GPL");
+-MODULE_AUTHOR("Vasileios Almpanis");
+-MODULE_DESCRIPTION("A simple kernel module that prints a message");
++#define DIR_NAME "jiffies"
++#define FILE_NAME "jiffies"
++
++static struct dentry *dir_entry;
++static struct dentry *file_entry;
++
++static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
++					size_t count, loff_t *offp)
++{
++	unsigned long	jiffies_val = jiffies;
++	char		jiffies_str[20];
++	int		len;
++
++	len = snprintf(jiffies_str, sizeof(jiffies_str), "%lu\n", jiffies_val);
++	if (*offp >= len)
++		return 0;
++
++	if (count > len - *offp)
++		count = len - *offp;
++	if (copy_to_user(buff, jiffies_str + *offp, count) != 0)
++		return -EFAULT;
++	*offp += count;
++	return count;
++}
++
++static const struct file_operations fops = {
++	.read = jiffies_read_ops,
++};
++
++static void check_if_dir_exists(const char *path)
++{
++	struct path p;
++	int ret = kern_path(path, LOOKUP_DIRECTORY, &p);
++
++	if (!ret)
++		debugfs_remove_recursive(p.dentry);
++}
+ 
+-static int __init hello_init(void)
++static int __init jiffies_init(void)
+ {
+-	pr_debug("Hello, KernelCare!\n");
++	check_if_dir_exists("/sys/kernel/debug/jiffies");
++	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
++	if (!dir_entry) {
++		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
++		return -ENODEV;
++	}
++
++	file_entry = debugfs_create_file(FILE_NAME, 0444, dir_entry, NULL, &fops);
++
++	if (!file_entry) {
++		pr_err("Failed to create debugfs file %s\n", FILE_NAME);
++		debugfs_remove(dir_entry);
++		return -ENODEV;
++	}
++
++	pr_info("Debugfs directory and file created successfully\n");
+ 	return 0;
+ }
+ 
+-static void __exit hello_exit(void)
++static void __exit jiffies_exit(void)
+ {
+-	pr_debug("Goodbye, KernelCare!\n");
++	debugfs_remove_recursive(dir_entry);
++	pr_info("Debugfs directory and file removed\n");
+ }
+ 
+-module_init(hello_init);
+-module_exit(hello_exit);
++module_init(jiffies_init);
++module_exit(jiffies_exit);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Your Name");
++MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for jiffies");
++
+-- 
+2.40.1
+

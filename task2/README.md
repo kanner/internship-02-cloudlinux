@@ -42,7 +42,7 @@ mount -t debugfs none /sys/kernel/debug
 debugfs    /sys/kernel/debug      debugfs  defaults  0 0
 ~~~
 
-## Jiffies
+## Part 1 "Jiffies"
 ### Enter the directory where the module is and load the module
 ~~~
 export "CONFIG_SAMPLE_KERNEL_CARE=m"
@@ -60,4 +60,27 @@ sudo cat /sys/kernel/debug/kernelcare/jiffies
 ### Unload the module
 ~~~
 sudo rmmod kernel_care
+~~~
+
+### Part 2 "Data"
+>edit /etc/fstab to give read and execute permissions to users in debugfs
+~~~
+sudo vim /etc/fstab
+~~~
+> Find the debugfs line and modify it  
+> debugfs    /sys/kernel/debug      debugfs  defaults,mode=755 0 0
+
+### Reload the fstab config on systemd
+~~~
+sudo systemctl daemon-reload
+~~~
+
+### Remount rebufs
+~~~
+sudo mount -o remount /sys/kernel/debug
+~~~
+
+> If you don't mount debugs on boot
+~~~
+sudo mount -t debugfs -o mode=755 none /sys/kernel/debug
 ~~~

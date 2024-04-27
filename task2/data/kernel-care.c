@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: GPL-2.0-only
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/debugfs.h>
+#include <linux/jiffies.h>
+#include <linux/namei.h>
+
+#define DIR_NAME "kernelcare"
+#define FILE_NAME1 "jiffies"
+#define FILE_NAME2 "data"
+
+static char data_buffer[PAGE_SIZE];
+static DEFINE_MUTEX(data_mutex);
+static struct dentry *dir_entry;
+static struct dentry *file_entry_jiffies;
+static struct dentry *file_entry_data;
+
+static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
+					size_t count, loff_t *offp)
+{
+	unsigned long	jiffies_val = jiffies;
+	char		jiffies_str[20];
+	int		len;
+
+	len = snprintf(jiffies_str, sizeof(jiffies_str), "%lu\n", jiffies_val);
+	if (*offp >= len)
+		return 0;
+
+	if (count > len - *offp)
+		count = len - *offp;
+	if (copy_to_user(buff, jiffies_str + *offp, count) != 0)
+		return -EFAULT;
+	*offp += count;
+	return count;
+}
+
+static ssize_t data_read_ops(struct file *filp, char __user *buff,
+					size_t count, loff_t *offp)
+{
+	size_t ret;
+
+	mutex_lock(&data_mutex);
+	ret = simple_read_from_buffer(buff, count, offp, data_buffer, strlen(data_buffer));
+	mutex_unlock(&data_mutex);
+	return ret;
+}
+
+static ssize_t data_write_ops(struct file *filp, const char __user *buff,
+					size_t count, loff_t *offp)
+{
+	size_t ret;
+
+	mutex_lock(&data_mutex);
+	//if (*offp + count > PAGE_SIZE)
+	//	count = PAGE_SIZE - *offp;
+	//ret = simple_write_to_buffer(data_buffer, PAGE_SIZE, offp, buff, count);
+	pr_info("count: %ld offset: %lld\n", count, *offp);
+	//pr_info("bytes written %ld\n", ret);
+	mutex_unlock(&data_mutex);
+	return ret;
+}
+
+static const struct file_operations fops = {
+	.read = jiffies_read_ops,
+};
+
+static const struct file_operations fops_data = {
+	.read = data_read_ops,
+	.write = data_write_ops,
+};
+
+static void check_if_dir_exists(const char *path)
+{
+	struct path p;
+	int ret = kern_path(path, LOOKUP_DIRECTORY, &p);
+
+	if (!ret)
+		debugfs_remove_recursive(p.dentry);
+}
+
+static int __init jiffies_init(void)
+{
+	check_if_dir_exists("/sys/kernel/debug/jiffies");
+	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
+	if (!dir_entry) {
+		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
+		return -ENODEV;
+	}
+
+	file_entry_jiffies = debugfs_create_file(FILE_NAME1, 0444, dir_entry, NULL, &fops);
+
+	if (!file_entry_jiffies) {
+		pr_err("Failed to create debugfs file %s\n", FILE_NAME1);
+		debugfs_remove(dir_entry);
+		return -ENODEV;
+	}
+	file_entry_data = debugfs_create_file(FILE_NAME2, 0644, dir_entry, NULL, &fops_data);
+	if (!file_entry_data) {
+		pr_err("Failed to create debugfs file %s\n", FILE_NAME2);
+		debugfs_remove_recursive(dir_entry);
+		return -ENODEV;
+	}
+	pr_info("Debugfs directory and file created successfully\n");
+	return 0;
+}
+
+static void __exit jiffies_exit(void)
+{
+	mutex_unlock(&data_mutex);
+	debugfs_remove_recursive(dir_entry);
+	pr_info("Debugfs directory and file removed\n");
+}
+
+module_init(jiffies_init);
+module_exit(jiffies_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Your Name");
+MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for jiffies");
+

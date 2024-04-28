@@ -75,6 +75,6 @@ module_init(jiffies_init);
 module_exit(jiffies_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("Vasileios Almpanis");
 MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for jiffies");
 

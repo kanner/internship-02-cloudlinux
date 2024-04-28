@@ -82,6 +82,7 @@ static void check_if_dir_exists(const char *path)
 static int __init jiffies_init(void)
 {
 	check_if_dir_exists("/sys/kernel/debug/jiffies");
+	check_if_dir_exists("/sys/kernel/debug/data");
 	// create directory
 	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
 	if (!dir_entry) {
@@ -122,6 +123,6 @@ module_init(jiffies_init);
 module_exit(jiffies_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
-MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for jiffies");
+MODULE_AUTHOR("Vasileios Almpanis");
+MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for data");
 

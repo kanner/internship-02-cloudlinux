@@ -1,6 +1,6 @@
-From 93fb71abacc36c17a9fe94b35514fad338ac7f4b Mon Sep 17 00:00:00 2001
+From d66358bb0717868cab1d49bb6db4b884af0ca01f Mon Sep 17 00:00:00 2001
 From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
-Date: Sun, 28 Apr 2024 12:31:50 +0200
+Date: Sun, 28 Apr 2024 19:31:59 +0200
 Subject: [PATCH] samples: hello_world: almpanis: Debugfs and data
 
 Part 2 of my second task for CLoudlinux OS internship.
@@ -12,11 +12,11 @@ A mutex protects is used to take care of race conditions
 
 Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
 ---
- samples/hello_world/kernel-care.c | 59 +++++++++++++++++++++++++++----
- 1 file changed, 53 insertions(+), 6 deletions(-)
+ samples/hello_world/kernel-care.c | 62 +++++++++++++++++++++++++++----
+ 1 file changed, 55 insertions(+), 7 deletions(-)
 
 diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
-index 4f7f6e614889..8c527af6db40 100644
+index 95526e4cf394..e5b0e642fbec 100644
 --- a/samples/hello_world/kernel-care.c
 +++ b/samples/hello_world/kernel-care.c
 @@ -5,12 +5,19 @@
@@ -80,10 +80,11 @@ index 4f7f6e614889..8c527af6db40 100644
  static void check_if_dir_exists(const char *path)
  {
  	struct path p;
-@@ -47,26 +82,38 @@ static void check_if_dir_exists(const char *path)
+@@ -47,26 +82,39 @@ static void check_if_dir_exists(const char *path)
  static int __init jiffies_init(void)
  {
  	check_if_dir_exists("/sys/kernel/debug/jiffies");
++	check_if_dir_exists("/sys/kernel/debug/data");
 +	// create directory
  	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
  	if (!dir_entry) {
@@ -123,6 +124,13 @@ index 4f7f6e614889..8c527af6db40 100644
  	debugfs_remove_recursive(dir_entry);
  	pr_info("Debugfs directory and file removed\n");
  }
+@@ -76,5 +124,5 @@ module_exit(jiffies_exit);
+ 
+ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Vasileios Almpanis");
+-MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for jiffies");
++MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for data");
+ 
 -- 
 2.40.1
 

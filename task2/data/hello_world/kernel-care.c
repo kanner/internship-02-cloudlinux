@@ -5,12 +5,15 @@
 #include <linux/debugfs.h>
 #include <linux/jiffies.h>
 #include <linux/namei.h>
+#include <linux/string.h>
 
 #define DIR_NAME "kernelcare"
 #define FILE_NAME1 "jiffies"
 #define FILE_NAME2 "data"
+#define MAX_BUFFER_SIZE (PAGE_SIZE + 1)
 
-static char data_buffer[PAGE_SIZE];
+// PAGE_SIZE + 1 for null terminator
+static char data_buffer[MAX_BUFFER_SIZE];
 static DEFINE_MUTEX(data_mutex);
 static struct dentry *dir_entry;
 static struct dentry *file_entry_jiffies;
@@ -52,11 +55,8 @@ static ssize_t data_write_ops(struct file *filp, const char __user *buff,
 	size_t ret;
 
 	mutex_lock(&data_mutex);
-	//if (*offp + count > PAGE_SIZE)
-	//	count = PAGE_SIZE - *offp;
-	//ret = simple_write_to_buffer(data_buffer, PAGE_SIZE, offp, buff, count);
-	pr_info("count: %ld offset: %lld\n", count, *offp);
-	//pr_info("bytes written %ld\n", ret);
+	memset(data_buffer, 0, MAX_BUFFER_SIZE);
+	ret = simple_write_to_buffer(data_buffer, MAX_BUFFER_SIZE - 1, offp, buff, count);
 	mutex_unlock(&data_mutex);
 	return ret;
 }
@@ -82,12 +82,14 @@ static void check_if_dir_exists(const char *path)
 static int __init jiffies_init(void)
 {
 	check_if_dir_exists("/sys/kernel/debug/jiffies");
+	// create directory
 	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
 	if (!dir_entry) {
 		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
 		return -ENODEV;
 	}
 
+	// create jiffies file
 	file_entry_jiffies = debugfs_create_file(FILE_NAME1, 0444, dir_entry, NULL, &fops);
 
 	if (!file_entry_jiffies) {
@@ -95,19 +97,23 @@ static int __init jiffies_init(void)
 		debugfs_remove(dir_entry);
 		return -ENODEV;
 	}
+	// create data file
 	file_entry_data = debugfs_create_file(FILE_NAME2, 0644, dir_entry, NULL, &fops_data);
 	if (!file_entry_data) {
 		pr_err("Failed to create debugfs file %s\n", FILE_NAME2);
 		debugfs_remove_recursive(dir_entry);
 		return -ENODEV;
 	}
+	memset(data_buffer, 0, MAX_BUFFER_SIZE);
 	pr_info("Debugfs directory and file created successfully\n");
 	return 0;
 }
 
 static void __exit jiffies_exit(void)
 {
+	// unlock mutex
 	mutex_unlock(&data_mutex);
+	// remove files and directory
 	debugfs_remove_recursive(dir_entry);
 	pr_info("Debugfs directory and file removed\n");
 }

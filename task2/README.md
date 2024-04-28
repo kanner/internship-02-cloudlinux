@@ -84,3 +84,34 @@ sudo mount -o remount /sys/kernel/debug
 ~~~
 sudo mount -t debugfs -o mode=755 none /sys/kernel/debug
 ~~~
+
+### Enter the directory where the module is and load the module
+~~~
+export "CONFIG_SAMPLE_KERNEL_CARE=m"
+make
+sudo insmod kernel-care.ko
+~~~
+
+### Run this command to check on the content of the file every x seconds
+~~~
+seconds="x amount in seconds"
+while true; do cat /sys/kernel/debug kernelcare/data; sleep $seconds; done
+~~~
+
+### Compiler and run the tester
+~~~
+cd task2/data
+make
+sudo ./tester "reps" "string to write to file"
+~~~
+
+> On your other terminal you should be able to see the new appended content to the file.  
+> The the root user can only write up to 4096 bytes into the file.  
+> Every new write erases the previous content and adds the new one.  
+
+
+### Unload the module
+~~~
+sudo rmmod -f kernel_care
+~~~
+> Now "sudo dmesg | tail -1" should show that files were removed succesfully.

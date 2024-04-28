@@ -1,8 +1,22 @@
-# SPDX-License-Identifier: GPL-2.0-only
-obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
+NAME	= tester
+SRC		= data-tester.cpp
+OBJS	= ${SRC:.cpp=.o}
+CXX		= clang++
+CXXFLAGS	= -Wall -Wextra -Werror
+RM		= rm -rf
 
-all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+all: ${NAME}
+
+${NAME} : ${OBJS}
+	${CXX} ${CXXFLAGS} ${OBJS} -o ${NAME}
+
+%.o: %.cpp
+	${CXX} ${CXXFLAGS} -c $< -o $@
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	${RM} ${OBJS}
+	${RM} ${NAME}
+
+re: clean all
+
+.PHONY: all clean re

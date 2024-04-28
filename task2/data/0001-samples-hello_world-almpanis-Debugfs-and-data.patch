@@ -1,0 +1,128 @@
+From 93fb71abacc36c17a9fe94b35514fad338ac7f4b Mon Sep 17 00:00:00 2001
+From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+Date: Sun, 28 Apr 2024 12:31:50 +0200
+Subject: [PATCH] samples: hello_world: almpanis: Debugfs and data
+
+Part 2 of my second task for CLoudlinux OS internship.
+I create a file named data in my debugfs directory
+called kernelcare. Data is readable by everyone but
+writeable only by root and only PAGE_SIZE can be
+written at most. Reading the file returns its content.
+A mutex protects is used to take care of race conditions
+
+Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+---
+ samples/hello_world/kernel-care.c | 59 +++++++++++++++++++++++++++----
+ 1 file changed, 53 insertions(+), 6 deletions(-)
+
+diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
+index 4f7f6e614889..8c527af6db40 100644
+--- a/samples/hello_world/kernel-care.c
++++ b/samples/hello_world/kernel-care.c
+@@ -5,12 +5,19 @@
+ #include <linux/debugfs.h>
+ #include <linux/jiffies.h>
+ #include <linux/namei.h>
++#include <linux/string.h>
+ 
+ #define DIR_NAME "kernelcare"
+-#define FILE_NAME "jiffies"
++#define FILE_NAME1 "jiffies"
++#define FILE_NAME2 "data"
++#define MAX_BUFFER_SIZE (PAGE_SIZE + 1)
+ 
++// PAGE_SIZE + 1 for null terminator
++static char data_buffer[MAX_BUFFER_SIZE];
++static DEFINE_MUTEX(data_mutex);
+ static struct dentry *dir_entry;
+-static struct dentry *file_entry;
++static struct dentry *file_entry_jiffies;
++static struct dentry *file_entry_data;
+ 
+ static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
+ 					size_t count, loff_t *offp)
+@@ -31,10 +38,38 @@ static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
+ 	return count;
+ }
+ 
++static ssize_t data_read_ops(struct file *filp, char __user *buff,
++					size_t count, loff_t *offp)
++{
++	size_t ret;
++
++	mutex_lock(&data_mutex);
++	ret = simple_read_from_buffer(buff, count, offp, data_buffer, strlen(data_buffer));
++	mutex_unlock(&data_mutex);
++	return ret;
++}
++
++static ssize_t data_write_ops(struct file *filp, const char __user *buff,
++					size_t count, loff_t *offp)
++{
++	size_t ret;
++
++	mutex_lock(&data_mutex);
++	memset(data_buffer, 0, MAX_BUFFER_SIZE);
++	ret = simple_write_to_buffer(data_buffer, MAX_BUFFER_SIZE - 1, offp, buff, count);
++	mutex_unlock(&data_mutex);
++	return ret;
++}
++
+ static const struct file_operations fops = {
+ 	.read = jiffies_read_ops,
+ };
+ 
++static const struct file_operations fops_data = {
++	.read = data_read_ops,
++	.write = data_write_ops,
++};
++
+ static void check_if_dir_exists(const char *path)
+ {
+ 	struct path p;
+@@ -47,26 +82,38 @@ static void check_if_dir_exists(const char *path)
+ static int __init jiffies_init(void)
+ {
+ 	check_if_dir_exists("/sys/kernel/debug/jiffies");
++	// create directory
+ 	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
+ 	if (!dir_entry) {
+ 		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
+ 		return -ENODEV;
+ 	}
+ 
+-	file_entry = debugfs_create_file(FILE_NAME, 0444, dir_entry, NULL, &fops);
++	// create jiffies file
++	file_entry_jiffies = debugfs_create_file(FILE_NAME1, 0444, dir_entry, NULL, &fops);
+ 
+-	if (!file_entry) {
+-		pr_err("Failed to create debugfs file %s\n", FILE_NAME);
++	if (!file_entry_jiffies) {
++		pr_err("Failed to create debugfs file %s\n", FILE_NAME1);
+ 		debugfs_remove(dir_entry);
+ 		return -ENODEV;
+ 	}
+-
++	// create data file
++	file_entry_data = debugfs_create_file(FILE_NAME2, 0644, dir_entry, NULL, &fops_data);
++	if (!file_entry_data) {
++		pr_err("Failed to create debugfs file %s\n", FILE_NAME2);
++		debugfs_remove_recursive(dir_entry);
++		return -ENODEV;
++	}
++	memset(data_buffer, 0, MAX_BUFFER_SIZE);
+ 	pr_info("Debugfs directory and file created successfully\n");
+ 	return 0;
+ }
+ 
+ static void __exit jiffies_exit(void)
+ {
++	// unlock mutex
++	mutex_unlock(&data_mutex);
++	// remove files and directory
+ 	debugfs_remove_recursive(dir_entry);
+ 	pr_info("Debugfs directory and file removed\n");
+ }
+-- 
+2.40.1
+

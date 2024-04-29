@@ -1,0 +1,259 @@
+From 454b7ee5a40b2ea29a1191100a994336ecce7ec2 Mon Sep 17 00:00:00 2001
+From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+Date: Mon, 29 Apr 2024 09:46:43 +0200
+Subject: [PATCH] samples: hello_world: almpanis: Identity
+
+Third part of my tasks for Cloudlinux OS. I have to create
+a struct called identity and use the kernels linked list
+API to use my struct as nodes of a linked list. Additionally
+I have to create some functions to create, remove, find and
+change the values of certain nodes plus taking care of errors
+during memory allocations and memory leaks
+
+Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
+---
+ samples/hello_world/Makefile      |   1 +
+ samples/hello_world/kernel-care.c | 193 +++++++++++++++---------------
+ 2 files changed, 99 insertions(+), 95 deletions(-)
+
+diff --git a/samples/hello_world/Makefile b/samples/hello_world/Makefile
+index d7bb4ca12001..98e17523f6f9 100644
+--- a/samples/hello_world/Makefile
++++ b/samples/hello_world/Makefile
+@@ -1,2 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
++CFLAGS_kernel-care.o := -DDEBUG
+diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
+index e5b0e642fbec..8fd7d2b27b7e 100644
+--- a/samples/hello_world/kernel-care.c
++++ b/samples/hello_world/kernel-care.c
+@@ -2,127 +2,130 @@
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+-#include <linux/debugfs.h>
+-#include <linux/jiffies.h>
+-#include <linux/namei.h>
+ #include <linux/string.h>
++#include <linux/slab.h>
++#include <linux/list.h>
+ 
+-#define DIR_NAME "kernelcare"
+-#define FILE_NAME1 "jiffies"
+-#define FILE_NAME2 "data"
+-#define MAX_BUFFER_SIZE (PAGE_SIZE + 1)
++#define MAX_NAME_LEN 20
+ 
+-// PAGE_SIZE + 1 for null terminator
+-static char data_buffer[MAX_BUFFER_SIZE];
+-static DEFINE_MUTEX(data_mutex);
+-static struct dentry *dir_entry;
+-static struct dentry *file_entry_jiffies;
+-static struct dentry *file_entry_data;
++struct identity {
++	char name[MAX_NAME_LEN];
++	int id;
++	bool hired;
++	struct list_head list;
++};
+ 
+-static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
+-					size_t count, loff_t *offp)
+-{
+-	unsigned long	jiffies_val = jiffies;
+-	char		jiffies_str[20];
+-	int		len;
+-
+-	len = snprintf(jiffies_str, sizeof(jiffies_str), "%lu\n", jiffies_val);
+-	if (*offp >= len)
+-		return 0;
+-
+-	if (count > len - *offp)
+-		count = len - *offp;
+-	if (copy_to_user(buff, jiffies_str + *offp, count) != 0)
+-		return -EFAULT;
+-	*offp += count;
+-	return count;
+-}
++// list head initialized at compile time
++LIST_HEAD(identity_list);
++// It can be done also like:
++// struct list_head identity_list = LIST_HEAD_INIT(identity_list);
++// then when creating a new identity:
++// we need to also initialize the list_head like:
++// INIT_LIST_HEAD(&new_identity->list);
+ 
+-static ssize_t data_read_ops(struct file *filp, char __user *buff,
+-					size_t count, loff_t *offp)
++struct identity *identity_find(int id)
+ {
+-	size_t ret;
++	struct identity *temp;
++
++	// loop cursor, temp storage, member
++	list_for_each_entry(temp, &identity_list, list) {
++		// if id found return member
++		if (temp->id == id)
++			return temp;
++	}
+ 
+-	mutex_lock(&data_mutex);
+-	ret = simple_read_from_buffer(buff, count, offp, data_buffer, strlen(data_buffer));
+-	mutex_unlock(&data_mutex);
+-	return ret;
++	return NULL;
+ }
+ 
+-static ssize_t data_write_ops(struct file *filp, const char __user *buff,
+-					size_t count, loff_t *offp)
++int identity_create(char *name, int id)
+ {
+-	size_t ret;
+-
+-	mutex_lock(&data_mutex);
+-	memset(data_buffer, 0, MAX_BUFFER_SIZE);
+-	ret = simple_write_to_buffer(data_buffer, MAX_BUFFER_SIZE - 1, offp, buff, count);
+-	mutex_unlock(&data_mutex);
+-	return ret;
++	struct identity *new_identity;
++	struct identity *temp = NULL;
++
++	// check if name is too long
++	if (strlen(name) > MAX_NAME_LEN)
++		return -EINVAL;
++	// check if id already exists
++	temp = identity_find(id);
++	if (temp)
++		return -EEXIST;
++	// allocate memory for new identity
++	new_identity = kmalloc(sizeof(struct identity), GFP_KERNEL);
++	if (!new_identity)
++		return -ENOMEM;
++	strscpy(new_identity->name, name, MAX_NAME_LEN);
++	// default values
++	new_identity->id = id;
++	new_identity->hired = false;
++	// add to list
++	list_add_tail(&new_identity->list, &identity_list);
++	return 0;
+ }
+ 
+-static const struct file_operations fops = {
+-	.read = jiffies_read_ops,
+-};
+-
+-static const struct file_operations fops_data = {
+-	.read = data_read_ops,
+-	.write = data_write_ops,
+-};
++void identity_destroy(int id)
++{
++	struct identity *temp, *next;
++
++	// loop cursor, temp storage, list head, member
++	list_for_each_entry_safe(temp, next, &identity_list, list) {
++		// if id found delete and free memory
++		if (temp->id == id) {
++			list_del(&temp->list);
++			kfree(temp);
++			return;
++		}
++	}
++}
+ 
+-static void check_if_dir_exists(const char *path)
++int identity_hire(int id)
+ {
+-	struct path p;
+-	int ret = kern_path(path, LOOKUP_DIRECTORY, &p);
++	struct identity *node = identity_find(id);
+ 
+-	if (!ret)
+-		debugfs_remove_recursive(p.dentry);
++	if (!node)
++		return -EINVAL;
++	node->hired = true;
++	return 0;
+ }
+ 
+-static int __init jiffies_init(void)
++static int __init identity_init(void)
+ {
+-	check_if_dir_exists("/sys/kernel/debug/jiffies");
+-	check_if_dir_exists("/sys/kernel/debug/data");
+-	// create directory
+-	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
+-	if (!dir_entry) {
+-		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
+-		return -ENODEV;
+-	}
++	struct identity *temp;
++
++	if (identity_create("valmpani", 1))
++		pr_debug("Failed to create identity\n");
++
++	if (identity_create("alice", 2))
++		pr_debug("Failed to create identity\n");
++	if (identity_create("alice", 2))
++		pr_debug("Failed to create identity alice\n");
++	temp = identity_find(1);
++	if (temp)
++		pr_debug("id 1 = %s\n", temp->name);
++	identity_hire(1);
++	temp = identity_find(10);
++	if (temp)
++		pr_debug("id 10 = %s\n", temp->name);
++	else
++		pr_debug("id 10 not found\n");
+ 
+-	// create jiffies file
+-	file_entry_jiffies = debugfs_create_file(FILE_NAME1, 0444, dir_entry, NULL, &fops);
+-
+-	if (!file_entry_jiffies) {
+-		pr_err("Failed to create debugfs file %s\n", FILE_NAME1);
+-		debugfs_remove(dir_entry);
+-		return -ENODEV;
+-	}
+-	// create data file
+-	file_entry_data = debugfs_create_file(FILE_NAME2, 0644, dir_entry, NULL, &fops_data);
+-	if (!file_entry_data) {
+-		pr_err("Failed to create debugfs file %s\n", FILE_NAME2);
+-		debugfs_remove_recursive(dir_entry);
+-		return -ENODEV;
+-	}
+-	memset(data_buffer, 0, MAX_BUFFER_SIZE);
+-	pr_info("Debugfs directory and file created successfully\n");
+ 	return 0;
+ }
+ 
+-static void __exit jiffies_exit(void)
++static void __exit identity_exit(void)
+ {
+-	// unlock mutex
+-	mutex_unlock(&data_mutex);
+-	// remove files and directory
+-	debugfs_remove_recursive(dir_entry);
+-	pr_info("Debugfs directory and file removed\n");
++	struct identity *temp, *next;
++
++	list_for_each_entry_safe(temp, next, &identity_list, list) {
++		pr_info("Freeing node %s\n", temp->name);
++		list_del(&temp->list);
++		kfree(temp);
++	}
+ }
+ 
+-module_init(jiffies_init);
+-module_exit(jiffies_exit);
++module_init(identity_init);
++module_exit(identity_exit);
+ 
+ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Vasileios Almpanis");
+-MODULE_DESCRIPTION("Kernel module creating debugfs directory and file for data");
++MODULE_DESCRIPTION("Kernel module for linked list manipulation");
+ 
+-- 
+2.40.1
+

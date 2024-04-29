@@ -1,4 +1,4 @@
-# Task3
+# Task3 Identity
 
 ~~~
 /* task 3 */
@@ -92,3 +92,37 @@ identity_destroy(1);
 
 Bonus points for properly checking return values of the above functions.   
 ~~~
+
+## Compile and load the module
+~~~
+cd module_dir
+export CONFIG_SAMPLE_KERNEL_CARE="m"
+make
+sudo insmod kernel-care.ko
+~~~
+
+## Verify that the module is loaded
+~~~
+cat /propc/modulules | grep kernel_care
+~~~
+
+## Unload the module
+~~~
+sudo rmmod -f kernel_care
+~~~
+
+## See all messages printed by the module
+~~~
+# If you havent made any changes to the module
+sudo dmesg | tail -5
+~~~
+
+## Resources
+<ul>
+   <li>
+   <a href="https://www.kernel.org/doc/html/v4.14/core-api/kernel-api.html">Kernel Linked List Docs</a> 
+   </li>
+   <li> 
+   <a href="https://litux.nl/mirror/kerneldevelopment/0672327201/app01lev1sec2.html">Kernel Linked List Functions</a>
+   </li>
+</ul>  

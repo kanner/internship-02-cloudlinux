@@ -1,6 +1,6 @@
-From 454b7ee5a40b2ea29a1191100a994336ecce7ec2 Mon Sep 17 00:00:00 2001
+From f0825aa7121775d2ab083cc215d0f1ffd4e4e0f3 Mon Sep 17 00:00:00 2001
 From: Vasileios Almpanis <vasilisalmpanis@gmail.com>
-Date: Mon, 29 Apr 2024 09:46:43 +0200
+Date: Mon, 29 Apr 2024 09:45:08 +0200
 Subject: [PATCH] samples: hello_world: almpanis: Identity
 
 Third part of my tasks for Cloudlinux OS. I have to create
@@ -13,8 +13,8 @@ during memory allocations and memory leaks
 Signed-off-by: Vasileios Almpanis <vasilisalmpanis@gmail.com>
 ---
  samples/hello_world/Makefile      |   1 +
- samples/hello_world/kernel-care.c | 193 +++++++++++++++---------------
- 2 files changed, 99 insertions(+), 95 deletions(-)
+ samples/hello_world/kernel-care.c | 196 +++++++++++++++---------------
+ 2 files changed, 102 insertions(+), 95 deletions(-)
 
 diff --git a/samples/hello_world/Makefile b/samples/hello_world/Makefile
 index d7bb4ca12001..98e17523f6f9 100644
@@ -25,10 +25,10 @@ index d7bb4ca12001..98e17523f6f9 100644
  obj-$(CONFIG_SAMPLE_KERNEL_CARE) += kernel-care.o
 +CFLAGS_kernel-care.o := -DDEBUG
 diff --git a/samples/hello_world/kernel-care.c b/samples/hello_world/kernel-care.c
-index e5b0e642fbec..8fd7d2b27b7e 100644
+index e5b0e642fbec..719b0c923ad1 100644
 --- a/samples/hello_world/kernel-care.c
 +++ b/samples/hello_world/kernel-care.c
-@@ -2,127 +2,130 @@
+@@ -2,127 +2,133 @@
  #include <linux/init.h>
  #include <linux/kernel.h>
  #include <linux/module.h>
@@ -78,14 +78,14 @@ index e5b0e642fbec..8fd7d2b27b7e 100644
 -}
 +// list head initialized at compile time
 +LIST_HEAD(identity_list);
+ 
+-static ssize_t data_read_ops(struct file *filp, char __user *buff,
+-					size_t count, loff_t *offp)
 +// It can be done also like:
 +// struct list_head identity_list = LIST_HEAD_INIT(identity_list);
 +// then when creating a new identity:
 +// we need to also initialize the list_head like:
 +// INIT_LIST_HEAD(&new_identity->list);
- 
--static ssize_t data_read_ops(struct file *filp, char __user *buff,
--					size_t count, loff_t *offp)
 +struct identity *identity_find(int id)
  {
 -	size_t ret;
@@ -200,7 +200,10 @@ index e5b0e642fbec..8fd7d2b27b7e 100644
 +	temp = identity_find(1);
 +	if (temp)
 +		pr_debug("id 1 = %s\n", temp->name);
-+	identity_hire(1);
++	if (identity_hire(1))
++		pr_debug("identity with id 1 is not hired\n");
++	if (identity_hire(10))
++		pr_debug("identity with id 10 is not hired\n");
 +	temp = identity_find(10);
 +	if (temp)
 +		pr_debug("id 10 = %s\n", temp->name);

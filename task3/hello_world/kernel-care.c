@@ -101,7 +101,10 @@ static int __init identity_init(void)
 	temp = identity_find(1);
 	if (temp)
 		pr_debug("id 1 = %s\n", temp->name);
-	identity_hire(1);
+	if (identity_hire(1))
+		pr_debug("identity with id 1 is not hired\n");
+	if (identity_hire(10))
+		pr_debug("identity with id 10 is not hired\n");
 	temp = identity_find(10);
 	if (temp)
 		pr_debug("id 10 = %s\n", temp->name);

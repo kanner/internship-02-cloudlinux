@@ -16,7 +16,7 @@ static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
 					size_t count, loff_t *offp)
 {
 	unsigned long	jiffies_val = jiffies;
-	char		jiffies_str[20];
+	char		jiffies_str[20]; // 20+1 in case we always want \n, right?
 	int		len;
 
 	len = snprintf(jiffies_str, sizeof(jiffies_str), "%lu\n", jiffies_val);
@@ -28,6 +28,8 @@ static ssize_t jiffies_read_ops(struct file *filp, char __user *buff,
 	if (copy_to_user(buff, jiffies_str + *offp, count) != 0)
 		return -EFAULT;
 	*offp += count;
+	// easier way, which you found in the next subtask, something like:
+	// return simple_read_from_buffer(buff, count, offp, jiffies_str, sizeof(jiffies_str));
 	return count;
 }
 
@@ -46,16 +48,32 @@ static void check_if_dir_exists(const char *path)
 
 static int __init jiffies_init(void)
 {
-	check_if_dir_exists("/sys/kernel/debug/jiffies");
+	check_if_dir_exists("/sys/kernel/debug/jiffies"); /* wrong name 'jiffies', right? do we need it at all? */
 	dir_entry = debugfs_create_dir(DIR_NAME, NULL);
 	if (!dir_entry) {
+        /*
+         * wrong error check
+         * such functions have a tricky return values in case of errors.
+         * like ERR_PTR(-ERROR)
+         *
+         * see - https://elixir.bootlin.com/linux/latest/source/fs/debugfs/inode.c#L584
+         */
 		pr_err("Failed to create debugfs directory %s\n", DIR_NAME);
 		return -ENODEV;
 	}
 
+        /*
+         * this case can be done even without fops and error-prone magic, using:
+         * debugfs_create_u64(..., (u64 *)&jiffies);
+         */
 	file_entry = debugfs_create_file(FILE_NAME, 0444, dir_entry, NULL, &fops);
 
 	if (!file_entry) {
+        /*
+         * same here
+         *
+         * see - https://elixir.bootlin.com/linux/latest/source/fs/debugfs/inode.c#L478
+         */
 		pr_err("Failed to create debugfs file %s\n", FILE_NAME);
 		debugfs_remove(dir_entry);
 		return -ENODEV;

@@ -14,6 +14,12 @@
 
 // PAGE_SIZE + 1 for null terminator
 static char data_buffer[MAX_BUFFER_SIZE];
+/*
+ * JFYI: Linux kernel has different types of locks,
+ * https://www.kernel.org/doc/Documentation/locking/locktypes.rst
+ * one or another is better in different situations,
+ * rwlock_t seems to be better here, but mutex is ok for this task
+ */
 static DEFINE_MUTEX(data_mutex);
 static struct dentry *dir_entry;
 static struct dentry *file_entry_jiffies;
@@ -100,7 +106,7 @@ static int __init jiffies_init(void)
 	}
 	// create data file
 	file_entry_data = debugfs_create_file(FILE_NAME2, 0644, dir_entry, NULL, &fops_data);
-	if (!file_entry_data) {
+	if (!file_entry_data) { // same check issue here
 		pr_err("Failed to create debugfs file %s\n", FILE_NAME2);
 		debugfs_remove_recursive(dir_entry);
 		return -ENODEV;
@@ -112,8 +118,6 @@ static int __init jiffies_init(void)
 
 static void __exit jiffies_exit(void)
 {
-	// unlock mutex
-	mutex_unlock(&data_mutex);
 	// remove files and directory
 	debugfs_remove_recursive(dir_entry);
 	pr_info("Debugfs directory and file removed\n");

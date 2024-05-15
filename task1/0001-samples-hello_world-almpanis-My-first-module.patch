@@ -24,7 +24,7 @@ index 261023998c5b..860bb067cbd2 100644
  S:	Buried alive in reporters
  T:	git git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
  F:	*
-+F:	samples/hello-world/
++F:	samples/hello_world/
  F:	*/
 diff --git a/samples/Kconfig b/samples/Kconfig
 index b288d9991d27..b05ac3ecece6 100644
@@ -49,6 +49,18 @@ index b288d9991d27..b05ac3ecece6 100644
  config SAMPLE_TRACE_EVENTS
  	tristate "Build trace_events examples -- loadable modules only"
  	depends on EVENT_TRACING && m
+diff --git a/samples/Makefile b/samples/Makefile
+index b85fa64390c5..b9ecb6fba00b 100644
+--- a/samples/Makefile
++++ b/samples/Makefile
+@@ -7,6 +7,7 @@ subdir-$(CONFIG_SAMPLE_CGROUP) += cgroup
+ obj-$(CONFIG_SAMPLE_CONFIGFS)		+= configfs/
+ obj-$(CONFIG_SAMPLE_CONNECTOR)		+= connector/
+ obj-$(CONFIG_SAMPLE_FANOTIFY_ERROR)	+= fanotify/
++obj-$(CONFIG_SAMPLE_KERNEL_CARE)	+= hello_world/
+ subdir-$(CONFIG_SAMPLE_HIDRAW)		+= hidraw
+ obj-$(CONFIG_SAMPLE_HW_BREAKPOINT)	+= hw_breakpoint/
+ obj-$(CONFIG_SAMPLE_KDB)		+= kdb/
 diff --git a/samples/hello_world/Makefile b/samples/hello_world/Makefile
 new file mode 100644
 index 000000000000..98e17523f6f9

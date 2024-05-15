@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <linux/init.h>
-#include <linux/kernel.h>
 #include <linux/module.h>
 
 MODULE_LICENSE("GPL");
